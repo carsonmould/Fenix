@@ -1,0 +1,12 @@
+This directory, new_imp, contains the new implementation of the Fenix
+Data Recovery interface, authored by Carson Mould.  The files in this 
+directory will replace the files of similar names in the current code
+when this implementation is near completion.
+
+Thus far, many of the currently implemented functions and global variables
+have been copied over into this implementation.  While the current
+implementation does not work properly and is overly complex
+in its use of versioning, a lot of its code is functional
+and will be reused as much as possible.
+
+
