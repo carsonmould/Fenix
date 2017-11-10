@@ -22,7 +22,7 @@ typedef struct __fenix_group_entry{
    int out_rank;
    int timestart;
    int timestamp;
-   int depth;
+   //int depth;   //versioning not implemented
    int rank_separation;
 
    /* subject to change */
@@ -37,6 +37,21 @@ typedef struct __fenix_group {
    size_t total_size;
    fenix_group_entry_t *group_entry;
 } fenix_group_t;
+
+/* struct used for sending group_entry metadata */
+typedef struct __group_entry_packet {
+   int group_id;
+   int timestamp;
+   int depth;
+   int rank_separation;
+   enum states state;
+} fenix_group_entry_packet_t;
+
+/*struct used for sending group metadata */
+typedef struct __metadata_packet {
+   size_t count;
+   size_t total_size;
+} fenix_metadata_packet_t;
 
 extern fenix_group_t *fenix_g_data_recovery;
 

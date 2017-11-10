@@ -12,7 +12,8 @@
 #ifndef __FENIX_UTIL__
 #define __FENIX_UTIL__
 
-//#include "fenix.h"
+#include "fenix.h"
+#include "fenix_process_recovery.h"
 #include <mpi.h>
 #include <syslog.h>
 #include <sys/types.h>
@@ -31,6 +32,12 @@
 #include <libgen.h>
 
 char *log_name;
+
+#define LDEBUG(f...)  {LLIND("debug",f);}
+#define LLIND(t,f...) {fprintf(stderr,"%s - %s (%i): %s: \n",logname,__PRETTY_FUNCTION__,getpid(),t); fprintf(stderr,f);}
+#define ERRHANDLE(f...){LFATAL(f);}
+#define LFATAL(f...)  {LLINF("fatal", f);}
+#define LLINF(t,f...) {fprintf(stderr,"(%i): %s: ", getpid(), t); fprintf(stderr, f);}
 
 enum states { EMPTY = 0, OCCUPIED = 1, DELETED = 2, NEEDFIX = 3 };
 

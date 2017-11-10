@@ -5,7 +5,8 @@
  */
 
 #include "fenix_data_recovery.h"
-#include "fenix_process_recovery_mine.h"
+#include "fenix_opt.h"
+#include "fenix_process_recovery.h"
 #include "fenix_util.h"
 #include "fenix_ext.h"
 

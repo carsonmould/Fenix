@@ -44,8 +44,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Author Marc Gamell, Eric Valenzuela, Keita Teranishi, Manish Parashar
-//        and Michael Heroux
+// Author Marc Gamell, Eric Valenzuela, Keita Teranishi, Manish Parashar,
+//        Rob Van der Wijngaart, and Michael Heroux
 //
 // Questions? Contact Keita Teranishi (knteran@sandia.gov) and
 //                    Marc Gamell (mgamell@cac.rutgers.edu)
@@ -54,33 +54,84 @@
 //@HEADER
 */
 
-#ifndef __FENIX_EXT_H__
-#define __FENIX_EXT_H__
-/* Keep all global variable declarations */
-#include <mpi.h>
-#include "fenix_opt.h"
-#include "fenix_data_group.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <fenix.h>
+#include <fenix_process_recovery.h>
+ 
+fenix_comm_list_t my_list = {NULL, NULL};
 
-extern __fenix_debug_options __fenix_options;
-extern int __fenix_g_fenix_init_flag;
-extern int __fenix_g_role;
-extern fenix_group_t *__fenix_g_data_recovery;
+int __fenix_comm_push(MPI_Comm *comm) {
+  fenix_comm_list_elm_t *current = (fenix_comm_list_elm_t *) malloc(sizeof(fenix_comm_list_elm_t));
+  if (!current) return 0;
+  current->next = NULL;
+  current->comm = comm;
+  if (!my_list.tail) {
+    /* if list was empty, initialize head and tail                             */
+    current->prev = NULL;
+    my_list.head = my_list.tail = current;
+  }
+  else {
+    /* if list was not empty, add element to the head of the list              */
+    current->prev = my_list.head;
+    my_list.head->next = current;
+    my_list.head = current;
+  }
+  return FENIX_SUCCESS;
+}
 
-extern int __fenix_g_num_inital_ranks;
-extern int __fenix_g_num_survivor_ranks;
-extern int __fenix_g_num_recovered_ranks;
-extern int __fenix_g_resume_mode;                // Defines how program resumes after process recovery
-extern int __fenix_g_spawn_policy;               // Indicate dynamic process spawning
-extern int __fenix_g_spare_ranks;                // Spare ranks entered by user to repair failed ranks
-extern int __fenix_g_replace_comm_flag;
-extern int __fenix_g_repair_result;
+int __fenix_comm_delete(MPI_Comm *comm) {
 
-extern MPI_Comm *__fenix_g_world;                // Duplicate of the MPI communicator provided by user
-extern MPI_Comm *__fenix_g_new_world;            // Global MPI communicator identical to g_world but without spare ranks
-extern MPI_Comm *__fenix_g_user_world;           // MPI communicator with repaired ranks
-extern MPI_Comm __fenix_g_original_comm;
-extern MPI_Op __fenix_g_agree_op;
+  fenix_comm_list_elm_t *current = my_list.tail;
+  while (current) {
+    if (*(current->comm) == *comm) {
+      if (current != my_list.head && current != my_list.tail) {
+	current->prev->next = current->next;
+        current->next->prev = current->prev;
+      }
+      else if (current == my_list.tail) {
+        if (current->next) {
+          current->next->prev = NULL;
+          my_list.tail = current->next;
+	}
+        else my_list.tail = my_list.head = NULL;
+      }
+      else {
+        if (current->prev) {
+          current->prev->next = NULL;
+          my_list.head = current->prev;
+	}
+        else my_list.tail = my_list.head = NULL;
+      }
+      MPIF_Comm_revoke(*comm);
+      PMPI_Comm_free(comm);
+      free(current);
+      return 1;
+    }
+    else current = current->next;
+  }
+  /* if we end up here, the requested communicator has not been found */
+  return 0;
+}
+  
 
-
-#endif // __FENIX_EXT_H__
+void __fenix_comm_list_destroy(void) {
+  if (my_list.tail == NULL) {
+    return;
+  }
+  else {
+    fenix_comm_list_elm_t *current = my_list.tail;
+    while (current->next) {
+      fenix_comm_list_elm_t *new = current->next;
+      MPIF_Comm_revoke(*current->comm);
+      PMPI_Comm_free(current->comm);
+      free(current);
+      current = new;
+    }
+    MPIF_Comm_revoke(*current->comm);
+    PMPI_Comm_free(current->comm);
+    free(current);
+  }
+  my_list.tail = my_list.head = NULL;
+}
 

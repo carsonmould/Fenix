@@ -10,13 +10,15 @@
 #include <mpi.h>
 #include "fenix_util.h"
 
+#define __FENIX_DEFAULT_MEMBER_SIZE 512 //look at this later
+
 /* Need to determine which fields are necessary
  * and which ones need to be removed because 
  * versioning will not be implemented
  */
 typedef struct __fenix_member_entry {
    int member_id;
-   //enum states state;  //states from fenix util
+   enum states state;  //states from fenix util
    //fenix_version_t *version;
    void *user_data;
    MPI_Datatype current_datatype;
@@ -44,6 +46,6 @@ void __fenix_ensure_member_capacity(fenix_member_t *member);
 /* Likely not needed due to versioning */
 void __fenix_ensure_version_capacity_from_member(fenix_member_t *member);
 
-
+//int __fenix_search_member_id(int group_index, int key);
 
 #endif
