@@ -65,7 +65,7 @@ must be greater than or equal to -1\n", depth);
       /* this is either a new or recovered process */
       if (new_group == 1) {
 
-         fprintf(stderr, "This is a new group!\n");
+         //fprintf(stderr, "This is a new group!\n");
          group->count += 1;
          
          
@@ -81,7 +81,7 @@ must be greater than or equal to -1\n", depth);
          group_entry->state = OCCUPIED;
 
          /* If the rank is recovered, set group entry flag */
-         if (__fenix_g_role == 1) {
+         if (__fenix_g_role == FENIX_ROLE_RECOVERED_RANK) {
             group_entry->recovered = 1;
          } else {
             group_entry->recovered = 0;
@@ -106,9 +106,9 @@ must be greater than or equal to -1\n", depth);
          }*/
          group_entry->rank_separation = 1;
 
-         fprintf(stderr, "rank: %d, group_id: %d, time: %d, state: %d, count: %d\n",
+         /*fprintf(stderr, "rank: %d, group_id: %d, state: %d, count: %d\n",
                  __fenix_get_current_rank(comm), group_entry->group_id, 
-                 group_entry->timestamp, group_entry->state, group->count); 
+                 group_entry->state, group->count); */
       }
       /* Group has already been created.  Renew MPI Comm */ 
       else {
@@ -142,10 +142,10 @@ must be greater than or equal to -1\n", depth);
                   1900, &remote_need_recovery, 1, MPI_INT, group_entry->in_rank, 
                   1900, group_entry->comm, &status);
 
-      fprintf(stderr, "rank: %d, group_id: %d, current_rank: %d, comm_size: %d, \
-in_rank: %d, out_rank: %d, recovered: %d\n", __fenix_get_current_rank(comm), 
+      /*fprintf(stdout, "rank: %d, group_id: %d, current_rank: %d, comm_size: %d, \
+in_rank: %d, out_rank: %d, recovered: %d\n", __fenix_get_current_rank(comm),
 group_entry->group_id, group_entry->current_rank, group_entry->comm_size,
-group_entry->in_rank, group_entry->out_rank, group_entry->recovered);
+group_entry->in_rank, group_entry->out_rank, group_entry->recovered);*/
 
       /* Recover group entry metadata for ranks that need it 
        * Why and how is this recovered?
@@ -171,6 +171,7 @@ group_entry->in_rank, group_entry->out_rank, group_entry->recovered);
 
          /* Cur_rank needs recovery from out_rank */
          /* THIS NEEDS A FIX */
+         printf("\nThe next rank has been recovered and its metadata has been re-initialized.\n\n");
          rtn = __recover_metadata(group_entry->current_rank,
                                   group_entry->out_rank, group_entry->comm);
          rtn = __recover_group_data(group_entry->current_rank,
@@ -180,10 +181,17 @@ group_entry->in_rank, group_entry->out_rank, group_entry->recovered);
          group_entry->recovered = 0;
       }
 
+      fprintf(stdout, "group_id: %d, current_rank: %d, count: %d, comm_size: %d, \
+in_rank: %d, out_rank: %d\n",
+group_entry->group_id, group_entry->current_rank, group->count, group_entry->comm_size,
+group_entry->in_rank, group_entry->out_rank);
+
       /* Need to implement this still */ 
       /* WHAT IS __fenix_g_agree_op FOR ALL_REDUCE? */
       //rtn = __fenix_join_group(group, group_entry, comm);
-      rtn = 1;
+      
+      rtn = (__fenix_join_group(group, group_entry, comm) != 1) ? FENIX_SUCCESS : FENIX_ERROR_GROUP_CREATE;
+      //rtn = 1;
    }
    return rtn;
 }
@@ -228,20 +236,41 @@ int __Fenix_Data_member_create(int group_id, int member_id,
       member_entry = &(member->member_entry[next_member_position]);
 
       /* Initialize member metadata */
+      //__fenix_data_member_init_metadata(member_entry, member_id, source_buffer, count, datatype);
+      member_entry->member_id = member_id;
+      member_entry->state = OCCUPIED;
+      //member_entry->user_data = source_buffer;   //did this below
+      member_entry->current_datatype = datatype;
+      
+      int d_size;
+      MPI_Type_size(datatype, &d_size);
+
+      member_entry->datatype_size = member_entry->current_size = d_size;   //check this line
 
       /* May need to send data type to remote rank - Sendrecv */
+      MPI_Sendrecv(&count, 1, MPI_INT, group_entry->out_rank, STORE_DATA_TAG + 1, 
+                   &remote_count, 1, MPI_INT, group_entry->in_rank, STORE_DATA_TAG + 1,
+                   group_entry->comm, &status);
 
       /* Point member entry user_data to provided data */
       member_entry->user_data = source_buffer;
 
+      if (group_entry->current_rank == 0) { 
+         fprintf(stdout, "Succesffully created member_id %d for group %d: \
+member_count: %d,  user_data: %p\n", member_entry->member_id, group_entry->group_id,
+member->count, member_entry->user_data);
+      }
+
       /* rest of function is versioning, so we dont' care.  may need
        * to steal some functionality from it though 
        */
-   }
    
-   /* need to call our global agreement function for joining */
-   //similar to function call from group_create
-   rtn = 1;
+      /* need to call our global agreement function for joining */
+      //similar to function call from group_create
+   
+      //rtn = 1;
+      rtn = (__fenix_join_member(member, member_entry, group_entry->comm) != 1) ? FENIX_SUCCESS : FENIX_ERROR_MEMBER_CREATE;
+   }
 
    return rtn;
 }
@@ -293,6 +322,101 @@ int __fenix_find_next_member_position(fenix_member_t *member) {
    }
    return found;
 }
+
+int __fenix_join_group(fenix_group_t *group, fenix_group_entry_t *entry, MPI_Comm comm) {
+
+   int found, ndx;
+
+   fenix_group_t *g = group;
+   fenix_group_entry_t *ge = entry;
+   
+   int current_rank_attr[GROUP_ENTRY_ATTR_SIZE];
+   int other_rank_attr[GROUP_ENTRY_ATTR_SIZE];
+
+   current_rank_attr[0] = g->count;
+   current_rank_attr[1] = ge->group_id;
+   current_rank_attr[2] = ge->timestamp;
+   current_rank_attr[3] = ge->state;
+
+   MPI_Allreduce(current_rank_attr, other_rank_attr, GROUP_ENTRY_ATTR_SIZE,
+                 MPI_INT, __fenix_g_agree_op, comm);
+
+   found = -1;
+   for (ndx = 0; found != 1 && (ndx < GROUP_ENTRY_ATTR_SIZE); ndx++) {
+      if (current_rank_attr[ndx] != other_rank_attr[ndx]) {
+         switch (ndx) {
+            case 0:
+               debug_print("ERROR ranks did not agree on g-count: %d\n",
+                            current_rank_attr[0]);
+               break;
+            case 1:
+               debug_print("ERROR ranks did not agree on g-group_id: %d\n",
+                            current_rank_attr[1]);
+               break;
+            case 2:
+               debug_print("ERROR ranks did not agree on g-timestamp: %d\n",
+                            current_rank_attr[2]);
+               break;
+            case 3:
+               debug_print("ERROR ranks did not agree on g-state: %d\n",
+                            current_rank_attr[3]);
+               break;
+            default:
+               break;
+         }
+         found = 1;
+      }
+   }
+
+   return found;
+   //return 0;
+}
+
+int __fenix_join_member(fenix_member_t *member, fenix_member_entry_t *entry, MPI_Comm comm) {
+
+   int found, ndx;
+
+   fenix_member_t *m = member;
+   fenix_member_entry_t *me = entry;
+   
+   int current_rank_attr[NUM_MEMBER_ATTR_SIZE];
+   int other_rank_attr[NUM_MEMBER_ATTR_SIZE];
+
+   current_rank_attr[0] = m->count;
+   current_rank_attr[1] = me->member_id;
+   current_rank_attr[2] = me->state;
+
+   MPI_Allreduce(current_rank_attr, other_rank_attr, NUM_MEMBER_ATTR_SIZE,
+                 MPI_INT, __fenix_g_agree_op, comm);
+
+   found = -1;
+   for (ndx = 0; found != 1 && (ndx < NUM_MEMBER_ATTR_SIZE); ndx++) {
+      if (current_rank_attr[ndx] != other_rank_attr[ndx]) {
+         switch (ndx) {
+            case 0:
+               debug_print("ERROR ranks did not agree on m-count: %d\n",
+                            current_rank_attr[0]);
+               break;
+            case 1:
+               debug_print("ERROR ranks did not agree on m-member_id: %d\n",
+                            current_rank_attr[1]);
+               break;
+            case 2:
+               debug_print("ERROR ranks did not agree on m-state: %d\n",
+                            current_rank_attr[2]);
+               break;
+            default:
+               break;
+         }
+         found = 1;
+      }
+   }
+
+   return found;
+   //return 0;
+}
+
+
 
 #if 0
 int main(int argc, char **argv) {

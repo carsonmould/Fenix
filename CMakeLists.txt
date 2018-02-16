@@ -61,6 +61,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
 
 #add_subdirectory(src)
 add_subdirectory(new_imp)
+add_subdirectory(my_test)
 #add_subdirectory(test/subset_internal)
 add_subdirectory(test/request_tracking)
 #add_subdirectory(examples/01_hello_world/fenix)
@@ -73,4 +74,6 @@ add_subdirectory(test/request_tracking)
 #add_subdirectory(examples/04_Isend_Irecv/mpi)
 #add_subdirectory(examples/05_subset_create)
 #add_subdirectory(examples/06_subset_createv)
+add_subdirectory(examples/07_hello_world/fenix)
+
 

@@ -9,6 +9,7 @@
 
 #include <mpi.h>
 #include "fenix_data_member.h"
+#include "fenix_data_packet.h"
 #include "fenix_util.h"
 
 #define __FENIX_DEFAULT_GROUP_SIZE 32
@@ -48,17 +49,17 @@ typedef struct __group_entry_packet {
 } fenix_group_entry_packet_t;
 
 /*struct used for sending group metadata */
-typedef struct __metadata_packet {
+/*typedef struct __metadata_packet {
    size_t count;
    size_t total_size;
-} fenix_metadata_packet_t;
+} fenix_metadata_packet_t;*/
 
 extern fenix_group_t *fenix_g_data_recovery;
 
 fenix_group_t * __fenix_data_group_init();
 
 void __fenix_data_group_destroy(fenix_group_t *group);
-//void __fenix_data_group_reinit(fenix_groupt_t *group)
+void __fenix_data_group_reinit(fenix_group_t *group, fenix_metadata_packet_t packet);
 void __fenix_ensure_group_capacity(fenix_group_t *group);
 int __fenix_search_groupid(int key, fenix_group_t *group);
 int __fenix_find_next_group_position(fenix_group_t *group);

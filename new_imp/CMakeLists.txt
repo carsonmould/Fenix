@@ -30,6 +30,7 @@ fenix_process_recovery.c
 fenix_util.c
 fenix_data_recovery.c
 fenix_metadata_recovery.c
+#fenix_metadata.c
 fenix_data_group.c
 fenix_data_member.c
 fenix_comm_list.c

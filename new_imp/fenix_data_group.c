@@ -7,6 +7,8 @@
 #include <mpi.h>
 #include "fenix_data_group.h"
 #include "fenix_data_member.h"
+#include "fenix_ext.h"
+#include "fenix_data_packet.h"
 #include "fenix-config.h"
 
 /* Initialize the group entries, and call the function that
@@ -92,4 +94,37 @@ int __fenix_find_next_group_position(fenix_group_t *group) {
    }
 
    return found;
+}
+
+void __fenix_data_group_reinit(fenix_group_t *g, fenix_metadata_packet_t packet) {
+  fenix_group_t *group = g;
+  int start_index = group->total_size;
+  group->count = packet.count;
+  group->total_size = packet.total_size;
+  group->group_entry = (fenix_group_entry_t *) s_realloc(group->group_entry,
+                                                         (group->total_size) *
+                                                         sizeof(fenix_group_entry_t));
+
+  if (__fenix_options.verbose == 48) {
+    verbose_print("c-rank: %d, role: %d, g-size: %d\n",
+                    __fenix_get_current_rank(*__fenix_g_new_world), __fenix_g_role, group->total_size);
+  }
+
+  int group_index;
+  for (group_index = start_index; group_index < group->total_size; group_index++) {
+    fenix_group_entry_t *gentry = &(group->group_entry[group_index]);
+    //gentry->depth = 1;
+    gentry->group_id = -1;
+    gentry->timestamp = 0;
+    gentry->state = EMPTY;
+
+    if (__fenix_options.verbose == 48) {
+      verbose_print(
+              "c-rank: %d, role: %d, g-groupid: %d, g-timestamp: %d, g-state: %d\n",
+                __fenix_get_current_rank(*__fenix_g_new_world), __fenix_g_role,
+              gentry->group_id, gentry->timestamp, gentry->state);
+    }
+
+    gentry->member = __fenix_data_member_init();
+  }
 }

@@ -16,6 +16,11 @@
 #include <string.h>
 #include <sys/time.h>
 
+#define GROUP_ENTRY_ATTR_SIZE 4  //was 5, removed depth so it's now 4
+#define NUM_MEMBER_ATTR_SIZE 3
+
+#define STORE_DATA_TAG 2003
+
 int __Fenix_Data_group_create(int group_id, MPI_Comm comm,
                             int start_time_stamp, int depth);
 int __Fenix_Data_member_create(int group_id, int member_id,
@@ -36,5 +41,8 @@ int __recover_group_data(int current_rank, int out_rank,
 
 int __fenix_search_member_id(int group_index, int key);
 int __fenix_find_next_member_position(fenix_member_t *member);
+
+int __fenix_join_group(fenix_group_t *group, fenix_group_entry_t *entry, MPI_Comm);
+int __fenix_join_member(fenix_member_t *member, fenix_member_entry_t *entry, MPI_Comm);
 
 #endif

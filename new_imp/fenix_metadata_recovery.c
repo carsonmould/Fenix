@@ -62,7 +62,7 @@ int __recover_metadata(int current_rank, int out_rank, MPI_Comm comm) {
    group->count = group_packet.count;
    group->total_size = group_packet.total_size;
 
-   /* __fenix_data_group_reinit(group, group_packet) */
+   __fenix_data_group_reinit(group, group_packet);
 
    return 0;
 }
@@ -87,7 +87,7 @@ int __recover_group_data(int current_rank, int out_rank,
    fenix_member_t *member = group_entry->member;
    
    /* Reinit member entries, APPARENTLY NEEDS FIX */
-   /* __fenix_data_member_reinit(member, member_packet, NEEDFIX) */
+   __fenix_data_member_reinit(member, member_packet, 0);
    
    return 0;
 }

@@ -8,6 +8,8 @@
 #define __FENIX_DATA_MEMBER_H__
 
 #include <mpi.h>
+//#include "fenix_data_group.h"
+#include "fenix_data_packet.h"
 #include "fenix_util.h"
 
 #define __FENIX_DEFAULT_MEMBER_SIZE 512 //look at this later
@@ -42,7 +44,7 @@ fenix_member_t *__fenix_data_member_init();
 
 void __fenix_data_member_destroy(fenix_member_t *member);
 void __fenix_ensure_member_capacity(fenix_member_t *member);
-
+void __fenix_data_member_reinit(fenix_member_t *m, fenix_metadata_packet_t packet, int state);
 /* Likely not needed due to versioning */
 void __fenix_ensure_version_capacity_from_member(fenix_member_t *member);
 
